@@ -1,0 +1,108 @@
+## **'Project: Practical Machine Learning'**
+
+Anushri
+
+date: "05/09/2019"
+
+==================================================================
+
+## Introduction
+   Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.In this project, main goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har.
+   
+   
+## Summary
+   In this project we need to predict the manner in which 6 participants did the exercise. This is the "classe" variable in the training set.  The algorithm described here is applied to the 20 test cases available in the test data and the predictions are submitted in appropriate format to the Course Project Prediction Quiz .
+   
+## 1.Loading required packages and data
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+  
+```{r}
+library(caret)
+library(rpart)
+library(rattle)
+library(randomForest)
+library(gbm)
+train= read.csv("/Users/Anushree Tambe/Desktop/Coursera/ML/Project/Practical-Machine-Learning/pml-training.csv") 
+test= read.csv("/Users/Anushree Tambe/Desktop/Coursera/ML/Project/Practical-Machine-Learning/pml-testing.csv")
+dim(train)
+dim(test)
+```
+
+## 2.Cleaning Data
+In this we are removing coloumns which are having near zero variance as well as those columns which contains more than 95% zero or NA values as it wont affect much on final result.Also we are removing some unnecessary columns which we are not required for analysis.
+
+```{r}
+trainNZ<-nearZeroVar(train)
+length(trainNZ)
+train<-train[,-trainNZ]
+dim(train)
+nacol <- sapply(train, function(x) mean(is.na(x))) > 0.95
+train <- train[ , nacol == FALSE]
+dim(train)
+overview<-str(train)
+##First five columns are not required
+train <- train[, -(1:5)]
+dim(train)
+```
+
+## 3.Partitioning Train data into training and testing set
+
+```{r}
+set.seed(123)
+inTrain  <- createDataPartition(train$classe, p=0.8, list=FALSE)
+training <- train[inTrain, ]
+testing  <- train[-inTrain, ]
+dim(training)
+dim(testing)
+```
+
+## 4.Prediction Models
+
+### 4.1 Decision Tree Model
+
+```{r}
+set.seed(1234)
+modtree <- train(classe ~ .,method="rpart", data = training)
+predtree<-predict(modtree,testing)
+fancyRpartPlot(modtree$finalModel)
+confusionMatrix(predtree,testing$classe)
+```
+
+The predictive accuracy of the decision tree model is 56.33 % which is very low.
+
+### 4.2 Generalized Boosted Model (GBM)
+
+```{r}
+set.seed(1234)
+traincontrolgbm <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
+modgbm<- train(classe ~ ., data=training, method = "gbm",trControl = traincontrolgbm, verbose = FALSE)
+predgbm<-predict(modgbm,testing)
+confusionMatrix(predgbm,testing$classe)
+```
+
+The predictive accuracy of the Generalised Boosted model is 98.75% which is relatively higher but still we will check the accuracy with random forest.
+
+### 4.3 Random Forest Model
+
+```{r}
+set.seed(1234)
+traincontrolrf<- trainControl(method="cv", number=3, verboseIter=FALSE)
+modrf<-train(classe ~ .,method="rf", data = training, trControl=traincontrolrf )
+predrf<-predict(modrf,testing)
+confusionMatrix(predrf,testing$classe)
+```
+
+The predictive accuracy of Roandom Forest is 99.75% which is higher than all earlier models.
+
+## 5.Conclusion
+   As the accuracy level of Random Forest is 99.75%,it is best model for the given data. Hence this  model is selected and applied to make predictions on the 20 data points from the original testing dataset.
+   
+```{r}
+predict(modrf, test)
+```
+
